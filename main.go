@@ -12,7 +12,7 @@ import (
 func main() {
 	s := &http.Server{
 		Addr:    ":8080",
-		Handler: Handler{},
+		Handler: http.HandlerFunc(ServeHTTP),
 	}
 	fmt.Printf("starting server on %s\n", s.Addr)
 	if err := s.ListenAndServe(); err != nil {
@@ -20,54 +20,23 @@ func main() {
 	}
 }
 
-type Handler struct {
-}
-
-func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	log.Printf("%s %q", r.Method, r.RequestURI)
 	SetCommonHeaders(w)
 	switch r.URL.Path {
 	case "/":
-		fmt.Fprintf(w, `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <title> testing websockets </title>
-  </head>
-  <body>
-    <h1> websocket test </h1>
-  </body>
-<script>
-
-
-var exampleSocket = new WebSocket("ws://"+ location.host +"/t")
-
-exampleSocket.onopen = function (event) {
-console.log("open");
-};
-
-
-exampleSocket.onmessage = function (event) {
-  console.log("got: " + event.data);
-  exampleSocket.send(JSON.stringify("thanks for " + event.data));
-
-}
-
-
-</script>
-</html>
-`)
-
+		http.ServeFile(w, r, "index.html")
+	case "/script.js":
+		http.ServeFile(w, r, "script.js")
 	case "/t":
-		websocket.Handler(h.ServeWebsocket).ServeHTTP(w, r)
+		websocket.Handler(ServeWebsocket).ServeHTTP(w, r)
 	default:
 		http.NotFound(w, r)
 	}
 }
 
-func (h Handler) ServeWebsocket(ws *websocket.Conn) {
+func ServeWebsocket(ws *websocket.Conn) {
 	for {
 		t := time.Now()
 		log.Printf("sending: %v\n", t)
